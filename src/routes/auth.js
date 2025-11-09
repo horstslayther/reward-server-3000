@@ -4,6 +4,9 @@ import db from '../db.js';
 import bcrypt from 'bcryptjs';
 
 const router = express.Router();
+const parsedRememberDays = Number(process.env.SESSION_REMEMBER_DAYS);
+const REMEMBER_ME_DAYS = Number.isFinite(parsedRememberDays) && parsedRememberDays > 0 ? parsedRememberDays : 30;
+const REMEMBER_ME_MAX_AGE = REMEMBER_ME_DAYS * 24 * 60 * 60 * 1000;
 
 function toUserSafe(u) {
   if (!u) return null;
@@ -32,13 +35,19 @@ router.get('/me', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
+  const { username, password, stayLoggedIn } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'username and password required' });
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) return res.status(401).json({ error: 'invalid credentials' });
   const ok = bcrypt.compareSync(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: 'invalid credentials' });
   req.session.user = toUserSafe(user);
+  if (stayLoggedIn) {
+    req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE;
+  } else {
+    req.session.cookie.expires = false;
+    req.session.cookie.maxAge = null;
+  }
   res.json(req.session.user);
 });
 
