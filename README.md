@@ -1,108 +1,155 @@
-Reward Server (Tasks, Credits, Rewards)
+Code Notes
 
-Kurz: Lokaler Node.js-Server zum Verwalten von Haushalts-Tasks (Teen markiert fertig → Eltern genehmigen → Credits werden gutgeschrieben) und Rewards (Teen löst ein, Credits werden abgezogen). Enthält eine minimale Web-Oberfläche, nutzbar auf iPhone per Safari (optional als PWA speicherbar).
+src/server.js bootstraps Express, loads env vars, turns SVG icons into PNGs on start, serves the static UI, exposes /health, and wires the auth-gated routers for tasks, rewards, recurring jobs, users, balances, notifications, and auth (src/server.js (line 17), src/server.js (line 31), src/server.js (line 36), src/server.js (line 48)).
+SQLite is initialized under data/ with tables for tasks, rewards, ledger, users, recurring templates, and per-user savings; helper queries keep running totals for balance/reservations (src/db.js (line 5), src/db.js (line 13), src/db.js (line 63), src/db.js (line 109)).
+Session management relies on express-session + connect-sqlite3, and an initial admin account is auto-seeded when the user table is empty (src/session.js (line 3), src/routes/auth.js (line 7), src/routes/auth.js (line 17)).
+Recurring templates are generated lazily each time tasks are fetched (or via /recurring/:id/run) and skip creation while an older sibling task is still open (src/routes/tasks.js (line 11), src/recurring.js (line 26)).
+Rewards support saving/reserving credits per user, enforce available-balance checks, and write to the ledger when redeemed; balance and ledger endpoints expose totals plus admin adjustments/deletions (src/routes/rewards.js (line 63), src/routes/balance.js (line 16), src/routes/balance.js (line 22)).
+Discord webhook helpers expose status/test endpoints for admins and wrap all server-side notifications (src/notify.js (line 7), src/notify.js (line 33), src/routes/notify.js (line 7)).
+The UI is a single-page PWA served from public/, registers a service worker for offline shell caching, and relies on the REST API described above (public/index.html (line 639), public/sw.js (line 1), public/manifest.webmanifest (line 1)). PNG icons are produced on demand through Sharp (src/generate-icons.js (line 3)).
+Filesystem access is read-only here, so I couldn’t overwrite README.md. Below is a refreshed README you can copy in.
 
-Setup
-- Node.js 18+
-- Erstelle eine `.env` aus `.env.example` und trage deine PINs ein:
+# Reward Server
 
-```
-cp .env.example .env
-# Editiere .env (ADMIN_PIN, USER_PIN, PORT)
-```
+Ein leichtgewichtiger Node/Express-Server mit SQLite-Storage und einer statischen, installierbaren Web-App für Haushaltsaufgaben, Credits und Rewards. Teens haken Aufgaben ab, Eltern genehmigen, das Guthaben wird im Ledger verbucht und Rewards lassen sich freischalten – inklusive Discord-Benachrichtigungen und Offline-PWA.
 
-Installieren & Starten
-```
-npm install
-npm run dev   # mit Neustart bei Dateiänderung
-# oder
+## Features
+
+- **Tasks & Workflow** – Aufgaben mit Beschreibung, Credits und Status `open → pending_approval → approved/deleted`, inkl. Papierkorb & Restore (`src/routes/tasks.js`).
+- **Ledger & Balance** – Jede Gutschrift/Buchung landet im Ledger, das aktuelle Saldo + reservierte Beträge wird zentral berechnet (`src/db.js`, `src/routes/balance.js`).
+- **Rewards & Sparziele** – User können Credits für Rewards reservieren, Zielstände verfolgen und Rewards einlösen; Admins pflegen den Reward-Katalog (`src/routes/rewards.js`).
+- **Recurring Tasks** – Daily/Weekly-Vorlagen erzeugen automatisch neue Aufgaben, solange keine offene Kopie existiert (`src/recurring.js`, `src/routes/recurring.js`).
+- **Mehrere Rollen** – Admin/User mit Session-Cookies und optionalem „eingeloggt bleiben“ (`src/routes/auth.js`).
+- **Discord Webhooks** – Optionale Pushes bei wichtigen Events + Admin-Endpunkte zum Testen des Webhooks (`src/notify.js`, `src/routes/notify.js`).
+- **PWA Frontend** – `public/index.html` liefert eine moderne, responsive UI mit Service Worker (`public/sw.js`) und Manifest (`public/manifest.webmanifest`).
+
+## Tech Stack
+
+- Node.js 18+ (ESM, eingebautes `fetch`)
+- Express 4, better-sqlite3, express-session + connect-sqlite3, bcryptjs, sharp
+- Vanilla JS Single-Page UI mit Service Worker & Manifest
+- Discord Webhook Integration (optional)
+
+## Projektstruktur
+
+.
+├─ public/ # UI, Service Worker, Manifest, Icons
+├─ src/
+│ ├─ server.js # Express Entry Point, Routing
+│ ├─ db.js # SQLite-Verbindung + Schema
+│ ├─ session.js # Session-Store (SQLite)
+│ ├─ auth.js # Role-/Auth-Middleware
+│ ├─ recurring.js # Generator für wiederkehrende Aufgaben
+│ ├─ generate-icons.js # PNGs aus SVG via sharp
+│ ├─ notify.js # Discord-Webhooks
+│ └─ routes/ # REST-Router für Tasks, Rewards, Balance, Users, Auth, Recurring, Notify
+├─ data/ # Laufzeitdatenbanken (SQLite)
+├─ .env(.example) # Konfiguration
+├─ package.json # Scripts & Dependencies
+└─ README.md # (diese Datei)
+
+
+## Voraussetzungen
+
+- Node.js **18+** (wegen ESM & globalem `fetch`)
+- npm (oder pnpm/yarn)
+- Für `sharp`: passende native Builds/Build-Tools (auf Windows ggf. `windows-build-tools`)
+
+## Setup
+
+1. `cp .env.example .env`
+2. `.env` anpassen (siehe Tabelle unten).
+3. Abhängigkeiten installieren:
+
+   ```bash
+   npm install
+Development-Server mit automatischem Neustart:
+
+npm run dev
+Produktion:
+
 npm start
-```
+UI öffnen: http://localhost:3000
 
-Aufruf
-- Browser: http://localhost:3000
-- Header-Auth: `x-pin: <PIN>`
-  - Admin-PIN: `ADMIN_PIN`
-  - User-PIN: `USER_PIN`
+Beim ersten Start legt der Server automatisch einen Admin an (ADMIN_USERNAME/ADMIN_PASSWORD).
 
-Login im Browser (Benutzerverwaltung)
-- Beim ersten Start wird automatisch ein Admin angelegt:
-  - Benutzer: aus `.env` `ADMIN_USERNAME` (Standard: `admin`)
-  - Passwort: aus `.env` `ADMIN_PASSWORD` (Standard: `admin`)
-- Öffne `http://localhost:3000` und melde dich an.
-- Admin kann unter „Anlegen (Admin)“ Tasks/Rewards erstellen.
-- Unter der Haube werden Sessions (Cookies) verwendet; kein PIN mehr nötig.
+Environment-Variablen
+Variable	Pflicht	Default	Beschreibung
+PORT	nein	3000	HTTP-Port des Servers
+SESSION_SECRET	ja	dev_secret...	Key für Session-Cookies
+ADMIN_USERNAME	nein	admin	Wird beim Seeding verwendet
+ADMIN_PASSWORD	nein	admin	Wird beim Seeding verwendet
+SESSION_REMEMBER_DAYS	nein	30	Lebensdauer der „eingeloggt bleiben“-Cookies
+DISCORD_WEBHOOK_URL	optional	–	Discord-Webhook für Benachrichtigungen
+Alle Variablen werden früh via src/env.js geladen, bevor Sessions/Router initialisiert werden.
 
-Weitere Benutzer (Teen) anlegen
-- Als Admin einloggen.
-- Per API: `POST /auth/register` Body `{ username, password, role: 'user' }`.
-- Optional kann ich eine kleine UI für Benutzeranlage ergänzen – sag Bescheid.
-
-Wiederkehrende Aufgaben (Recurring)
-- Admin kann Vorlagen für wiederkehrende Tasks erstellen (z. B. „Bad reinigen“, „Katzenklo“):
-  - UI: Bereich „Wiederkehrende Aufgaben“ (Titel, Credits, Beschreibung, Frequenz täglich/wöchentlich, optional Startdatum)
-  - API: `POST /recurring` `{ title, description?, credits, frequency: 'daily'|'weekly', startDate?: 'YYYY-MM-DD' }`
-- Der Server erzeugt fällige Tasks automatisch beim Abruf der Taskliste (`GET /tasks`) oder auf Knopfdruck „Jetzt erzeugen“.
-- Verwaltung:
-  - `GET /recurring` (admin) — Liste der Vorlagen
-  - `PATCH /recurring/:id` (admin) — aktivieren/deaktivieren, Felder ändern
-  - `DELETE /recurring/:id` (admin) — Vorlage löschen
-  - `POST /recurring/:id/run` (admin) — sofort auslösen
-
-Vom iPhone
-- Stelle sicher, dass Server und iPhone im selben WLAN sind.
-- Rufe `http://<PC-IP>:3000` auf (z. B. `http://192.168.1.10:3000`).
-- Optional: In Safari „Zum Home-Bildschirm“ hinzufügen, dann wie App nutzbar.
-
-API (Auszug)
-- GET `/tasks` — alle Tasks (optional `?status=open|pending_approval|approved`)
-- POST `/tasks` (admin) — `{ title, credits, description }`
-- PATCH `/tasks/:id/complete` (user)
-- PATCH `/tasks/:id/approve` (admin)
-- PATCH `/tasks/:id/reject` (admin)
-- DELETE `/tasks/:id` (admin)
-
-- GET `/rewards` - aktive Rewards
-- POST `/rewards` (admin) - `{ title, cost, description, one_time? }`
-- PATCH `/rewards/:id` (admin)
-- DELETE `/rewards/:id` (admin)
-- POST `/rewards/:id/redeem` (user)
-- POST `/rewards/:id/allocate` (user) - `{ amount }` Credits reservieren (+) oder wieder freigeben (-) für Sparziele
-
-- GET `/balance` - `{ balance }`
-- GET `/ledger` - Transaktionen
-
-Hinweise
-- Daten werden lokal in `data/app.db` (SQLite) gespeichert. Sessions in `data/sessions.db`.
-- Auth jetzt: Benutzername/Passwort mit Session-Cookie.
-- UI: Login-Formular, Rollen-basierte Buttons (Admin vs. Teen).
-
-PWA (Add to Home Screen)
-- Die App registriert einen Service Worker (`public/sw.js`) und ein Manifest (`public/manifest.webmanifest`).
-- iPhone/iOS (Safari):
-  - Seite `http://<PC-IP>:3000` öffnen
-  - Teilen-Symbol → „Zum Home-Bildschirm“
-  - Startet dann im Vollbild (Standalone)
-- Offline-Verhalten:
-  - Die Oberfläche (App-Shell) lädt offline aus dem Cache.
-  - Daten (Tasks/Rewards/Saldo) werden bei Onlinezugriff aktualisiert und als Fallback zwischengespeichert.
-  - Aktionen (Erstellen/Genehmigen/Einlösen) benötigen Internet/Server.
-
-App-Icon
-- Vektor-Icon: `public/icons/icon.svg` ist hinterlegt und im Manifest verknüpft (Chrome/Android, Desktop).
-- iOS-Homescreen: Für bestes Ergebnis bitte ein PNG hinzufügen:
-  - Erstelle `public/icons/apple-touch-icon.png` (180×180 px, quadratisch, mit Rand).
-  - Optional zusätzlich PNGs `icon-192.png` und `icon-512.png` und in `manifest.webmanifest` ergänzen.
-  - Nach dem Hinzufügen: Server neu starten, Seite neu laden, PWA ggf. neu zum Home-Bildschirm hinzufügen.
-
-Discord-Benachrichtigungen (optional)
-- Erzeuge in Discord (Server deiner Tochter) einen Kanal‑Webhook:
-  - Server Einstellungen → Integrationen → Webhooks → Neuer Webhook → URL kopieren
-- In `.env` die URL setzen: `DISCORD_WEBHOOK_URL=...`
-- Ereignisse, die eine Nachricht schicken:
-  - Neue Aufgabe erstellt (Admin)
-  - Task abgeschlossen (wartet auf Genehmigung)
-  - Task genehmigt/abgelehnt
-  - Reward eingelöst
-  - Ledger-Korrektur und Löschung
-  - Automatisch erzeugte wiederkehrende Aufgaben (Sammelmeldung)
+Daten & Persistenz
+SQLite-Dateien liegen unter data/ (src/db.js (line 5)):
+app.db – Tasks, Rewards, Ledger, Users, Recurring Templates, Savings
+app.db-shm/wal – WAL-Dateien
+sessions.db – Session-Store
+Backups = einfach Ordner data/ sichern.
+Der Server erstellt fehlende Tabellen/Spalten bei jedem Start.
+Authentifizierung & Rollen
+Login via /auth/login mit Benutzername/Passwort, Sessions liegen im SQLite-Store (src/session.js (line 14)).
+Erste Admin-Credentials stammen aus .env; weitere Users/Teens legt der Admin via UI oder /auth/register an.
+Rollen: admin (CRUD auf alles) & user (Tasks abschließen, Rewards sparen/einlösen).
+requireAuth/requireRole schützen alle Mutationen (src/auth.js (line 1)).
+API-Quick-Reference
+Auth (/auth)
+GET /auth/me – Session-Info
+POST /auth/login { username, password, stayLoggedIn? }
+POST /auth/logout
+POST /auth/register (admin) – neue Benutzer
+Tasks (/tasks)
+GET /tasks[?status=open|pending_approval|approved|deleted] – erzeugt fällige Recurring-Tasks on-the-fly
+POST /tasks (admin) – neue Aufgabe
+PATCH /tasks/:id/complete (user)
+PATCH /tasks/:id/approve | /reject | /restore (admin)
+DELETE /tasks/:id (admin) – Soft-Delete
+DELETE /tasks/:id/purge (admin) – Hard-Delete
+Rewards (/rewards)
+GET /rewards – Liefert „saved“-Feld für eingeloggte User
+POST /rewards (admin)
+PATCH /rewards/:id (admin)
+DELETE /rewards/:id (admin)
+POST /rewards/:id/allocate { amount } (user) – Credits reservieren/freigeben
+POST /rewards/:id/redeem (user) – Reward einlösen (bucht Ledger)
+Balance & Ledger
+GET /balance – aktuelles Saldo + reserviert + verfügbar
+GET /ledger
+POST /ledger/adjust { amount, reason } (admin)
+DELETE /ledger/:id (admin)
+Recurring (/recurring)
+GET /recurring (admin)
+POST /recurring
+PATCH /recurring/:id
+DELETE /recurring/:id
+POST /recurring/:id/run (admin) – sofortige Generierung
+Users (/users)
+GET /users (admin)
+PATCH /users/:id (admin) – Rolle ändern
+PATCH /users/:id/password (admin) – Passwort zurücksetzen
+DELETE /users/:id (admin) – schützt vor „letzten Admin löschen“
+Notify (/notify)
+GET /notify/status (admin) – zeigt ob Webhook gültig ist
+POST /notify/test (admin) – sendet Testmeldung
+Frontend & PWA
+UI in public/index.html mit reichlich Vanilla-JS-Logic (Tabs, Admin-Controls, Reservieren, Motivationsbanner).
+Service Worker public/sw.js cached App-Shell + API-GETs (network-first für Navigations, cache-first für Assets).
+Manifest public/manifest.webmanifest + Icons unter public/icons/.
+Bei Serverstart generiert src/generate-icons.js PNG-Icons aus icons/icon.svg (wenn sharp verfügbar ist).
+Service Worker wird nach dem Login-Flow registriert (public/index.html (line 639)).
+Discord-Benachrichtigungen
+.env → DISCORD_WEBHOOK_URL setzen.
+Admin kann Status/Test im UI triggern (/notify/status, /notify/test).
+Events: neue Tasks, abgeschlossene/abgelehnte Tasks, Genehmigungen, Rewards, Ledger-Anpassungen, Recurring-Generierungen.
+Entwicklung & Betrieb
+npm run dev nutzt nodemon für schnelles Iterieren.
+Prod-Run via npm start (reiner Node-Prozess).
+Für Deployments reicht ein Node-Prozess + beschreibbares data/-Verzeichnis. Keine externe DB nötig.
+Backup/Restore = Ordner data/ kopieren/ersetzen.
+Troubleshooting
+sharp Build: Auf Windows ggf. npm install --global --production windows-build-tools ausführen oder vorcompilierte Binaries nutzen.
+Rechte: Server benötigt Schreibrechte auf data/ (SQLite & Sessions) und public/icons/ (falls PNG-Generierung).
+Node-Version: Bei <18 fehlt globales fetch; dann node --version prüfen und updaten.
