@@ -1,0 +1,17 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "reward3000",
+            "database": "${workspaceFolder:reward server}/data/app.db"
+        },
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "reward3000src",
+            "database": "${workspaceFolder:reward server}/src/data/app.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}

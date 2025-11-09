@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reward 3000</title>
+    <meta name="theme-color" content="#0a7cff" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Icons -->
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <!-- iOS PWA helpers -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Reward 3000" />
+    <!-- iOS Homescreen PNG icon -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; margin: 1rem; }
+      header { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+      input, button { font-size: 1rem; padding: 0.4rem 0.6rem; }
+      section { margin-top: 1rem; }
+      h2 { margin-bottom: 0.4rem; }
+      .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.25rem 0; }
+      .muted { color: #666; font-size: 0.9rem; }
+      .ok { color: #007f00; }
+      .err { color: #a00; }
+      .card { border: 1px solid #ddd; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.5rem; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.8rem; }
+      form > * { margin-right: 0.4rem; }
+      .balance-details { font-size: 0.85rem; color: #444; }
+      .reward-card { position: relative; }
+      .reward-ready { border-color: #0fa958; box-shadow: 0 0 0 1px rgba(15, 169, 88, 0.2); }
+      .reward-progress { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-top: 0.4rem; }
+      .progress-track { background: #f0f4f8; border-radius: 999px; height: 0.45rem; overflow: hidden; margin-top: 0.2rem; }
+      .progress-fill { background: #0a7cff; height: 100%; width: 0; transition: width 0.3s ease; }
+      .reward-ready .progress-fill { background: #0fa958; }
+      .reward-save { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
+      .reward-save input { width: 4rem; padding: 0.25rem 0.4rem; }
+      .reward-save small { font-size: 0.8rem; color: #666; }
+    </style>
+  </head>
+  <body>
+      <header>
+        <strong>Reward 3000</strong>
+        <span id="status" class="muted">Nicht verbunden</span>
+      </header>
+    <div id="appContent" style="display:none">
+    <section>
+      <div class="row">
+        <button id="refresh">Aktualisieren</button>
+        <span>Guthaben: <strong id="balance">0</strong> Credits</span>
+        <span id="balanceDetails" class="balance-details">(frei 0 / reserviert 0)</span>
+        <span id="who" class="muted" style="margin-left:auto"></span>
+        <button id="logout" style="display:none">Logout</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div>
+        <h2>Tasks</h2>
+        <div id="tasks"></div>
+      </div>
+      <div>
+        <h2>Rewards</h2>
+        <div id="rewards"></div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div id="adminCreateTask" style="display:none">
+        <h2>Task anlegen (Admin)</h2>
+        <form id="newTask">
+          <input name="title" placeholder="Titel" required />
+          <input name="credits" type="number" placeholder="Credits" value="5" />
+          <input name="description" placeholder="Beschreibung" />
+          <button type="submit">Erstellen</button>
+        </form>
+      </div>
+      <div id="adminCreateReward" style="display:none">
+        <h2>Reward anlegen (Admin)</h2>
+        <form id="newReward">
+          <input name="title" placeholder="Titel" required />
+          <input name="cost" type="number" placeholder="Kosten" value="10" />
+          <input name="description" placeholder="Beschreibung" />
+          <label style="font-size:0.85rem;">
+            <input name="one_time" type="checkbox" />
+            Einmaliger Reward (nach Einlösen ausblenden)
+          </label>
+          <button type="submit">Erstellen</button>
+        </form>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ledger</h2>
+      <div id="ledger"></div>
+    </section>
+
+    <section id="adminUsers" class="grid" style="display:none">
+      <div class="card">
+        <h2>Benutzer anlegen</h2>
+        <form id="newUser">
+          <input name="username" placeholder="Benutzername" required />
+          <input name="password" type="password" placeholder="Passwort" required />
+          <select name="role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button type="submit">Anlegen</button>
+        </form>
+        <div class="row" style="margin-top:.5rem">
+          <button id="discordTest">Discord Test</button>
+          <span id="discordStatus" class="muted">Webhook-Status wird geprüft…</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Benutzer verwalten</h2>
+        <div id="usersList" class="muted">Lade…</div>
+      </div>
+      <div class="card">
+        <h2>Wiederkehrende Aufgaben</h2>
+        <form id="newRecurring">
+          <input name="title" placeholder="Titel" required />
+          <input name="credits" type="number" placeholder="Credits" value="5" />
+            <input name="description" placeholder="Beschreibung" />
+            <select name="frequency">
+            <option value="daily">Täglich</option>
+            <option value="weekly">Wöchentlich</option>
+          </select>
+          <input name="startDate" type="date" />
+          <button type="submit">Vorlage erstellen</button>
+        </form>
+        <div id="recurringList" class="muted" style="margin-top:.5rem"></div>
+      </div>
+    </section>
+    </div>
+
+    <section id="loginBox" class="card" style="max-width:420px; display:none;">
+      <h2>Anmeldung</h2>
+      <form id="loginForm">
+        <div class="row"><input name="username" placeholder="Benutzername" required /></div>
+        <div class="row"><input name="password" type="password" placeholder="Passwort" required /></div>
+        <div class="row"><button type="submit">Einloggen</button></div>
+      </form>
+    </section>
+
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+
+      const statusEl = document.getElementById('status');
+      const balanceEl = document.getElementById('balance');
+      const balanceDetailsEl = document.getElementById('balanceDetails');
+      const tasksEl = document.getElementById('tasks');
+      const rewardsEl = document.getElementById('rewards');
+      const ledgerEl = document.getElementById('ledger');
+      const refreshBtn = document.getElementById('refresh');
+      const newTaskForm = document.getElementById('newTask');
+      const newRewardForm = document.getElementById('newReward');
+      const whoEl = document.getElementById('who');
+      const logoutBtn = document.getElementById('logout');
+      const loginBox = document.getElementById('loginBox');
+      const appContent = document.getElementById('appContent');
+      const loginForm = document.getElementById('loginForm');
+      const adminCreateTask = document.getElementById('adminCreateTask');
+      const adminCreateReward = document.getElementById('adminCreateReward');
+      const adminUsers = document.getElementById('adminUsers');
+      const newUserForm = document.getElementById('newUser');
+      const newRecurringForm = document.getElementById('newRecurring');
+      const recurringList = document.getElementById('recurringList');
+      const discordTestBtn = document.getElementById('discordTest');
+      const discordStatus = document.getElementById('discordStatus');
+      const usersList = document.getElementById('usersList');
+
+      let currentRole = 'unknown';
+      let currentUser = null;
+      let currentBalance = 0;
+      let currentReserved = 0;
+      let currentAvailable = 0;
+      let rewardSavings = {};
+
+      function headers() {
+        const pin = localStorage.getItem('pin') || '';
+        return { 'Content-Type': 'application/json', 'x-pin': pin };
+      }
+
+      async function api(path, options={}) {
+        const res = await fetch(path, { ...options, headers: { ...headers(), ...(options.headers||{}) }});
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || res.statusText);
+        }
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) return res.json();
+        return res.text();
+      }
+
+      async function loadAll() {
+        try {
+          statusEl.textContent = 'Lade...';
+          const [me, bal, tasks, rewards, ledger, recurring, users] = await Promise.all([
+            api('/auth/me'),
+            api('/balance'),
+            api('/tasks'),
+            api('/rewards'),
+            api('/ledger'),
+            currentRole === 'admin' ? api('/recurring') : Promise.resolve([]),
+            currentRole === 'admin' ? api('/users') : Promise.resolve([])
+          ]);
+          currentRole = me.role || 'unknown';
+          currentUser = me.username || null;
+          currentBalance = Number(bal.balance) || 0;
+          currentReserved = Number(bal.reserved || 0);
+          const apiAvailable = bal.available != null ? Number(bal.available) : currentBalance - currentReserved;
+          currentAvailable = Math.max(apiAvailable, 0);
+          balanceEl.textContent = currentBalance;
+          if (balanceDetailsEl) {
+            balanceDetailsEl.textContent = `(frei ${currentAvailable} / reserviert ${currentReserved})`;
+          }
+          rewardSavings = {};
+          rewards.forEach((r) => {
+            rewardSavings[r.id] = Number(r.saved || 0);
+          });
+          renderTasks(tasks);
+          renderRewards(rewards);
+          renderLedger(ledger);
+          renderRecurring(recurring);
+          renderUsers(users);
+          statusEl.textContent = 'OK'; statusEl.className = 'ok';
+          renderVisibility();
+          if (currentRole === 'admin') { refreshDiscordStatus(); }
+        } catch (e) {
+          statusEl.textContent = 'Fehler: ' + e.message; statusEl.className = 'err';
+        }
+      }
+
+      function renderTasks(list) {
+        const role = currentRole;
+        tasksEl.innerHTML = '';
+        if (!list.length) { tasksEl.innerHTML = '<div class="muted">Keine Tasks</div>'; return; }
+        list.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          const actions = [];
+          if (t.status === 'open' && role !== 'admin') {
+            actions.push(`<button data-act="complete" data-id="${t.id}">Fertig</button>`);
+          }
+          if (t.status === 'pending_approval' && role === 'admin') {
+            actions.push(`<button data-act="approve" data-id="${t.id}">Genehmigen</button>`);
+            actions.push(`<button data-act="reject" data-id="${t.id}">Ablehnen</button>`);
+          }
+          if (role === 'admin') {
+            actions.push(`<button data-act="delete" data-id="${t.id}" style="float:right;color:#a00;">Löschen</button>`);
+          }
+          div.innerHTML = `
+            <div><strong>${t.title}</strong> <span class="muted">(${t.credits} Credits) — Status: ${t.status}</span></div>
+            <div class="muted">${t.description || ''}</div>
+            <div class="row">${actions.join(' ')}</div>
+          `;
+          div.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const act = btn.getAttribute('data-act');
+            try {
+              if (act === 'complete') await api(`/tasks/${id}/complete`, { method: 'PATCH' });
+              if (act === 'approve') await api(`/tasks/${id}/approve`, { method: 'PATCH' });
+              if (act === 'reject') await api(`/tasks/${id}/reject`, { method: 'PATCH' });
+              if (act === 'delete') await api(`/tasks/${id}`, { method: 'DELETE' });
+              await loadAll();
+            } catch (e) { alert(e.message); }
+          });
+          tasksEl.appendChild(div);
+        });
+      }
+
+      function renderRewards(list) {
+        const role = currentRole;
+        rewardsEl.innerHTML = '';
+        if (!list.length) { rewardsEl.innerHTML = '<div class="muted">Keine Rewards</div>'; return; }
+        list.forEach(r => {
+          const div = document.createElement('div');
+          const cost = Number(r.cost) || 0;
+          const saved = Number(r.saved ?? rewardSavings[r.id] ?? 0) || 0;
+          rewardSavings[r.id] = saved;
+          const progress = cost === 0 ? 1 : Math.min(saved / cost, 1);
+          const percent = Math.round(progress * 100);
+          const remaining = cost === 0 ? 0 : Math.max(0, cost - saved);
+          const canRedeem = cost === 0 || (saved + currentAvailable) >= cost;
+          const highlightReady = cost === 0 || remaining === 0;
+          div.className = `card reward-card${highlightReady ? ' reward-ready' : ''}${r.one_time ? ' reward-once' : ''}`;
+          const actions = [];
+          if (role !== 'admin') {
+            const disabledAttr = canRedeem ? '' : ' disabled aria-disabled="true" title="Noch nicht genug Credits"';
+            actions.push(`<button type="button" data-act="redeem" data-id="${r.id}"${disabledAttr}>Einlösen</button>`);
+          }
+          if (role === 'admin') {
+            actions.push(`<button type="button" data-act="delete" data-id="${r.id}" style="float:right;color:#a00;">Löschen</button>`);
+          }
+          const progressText = cost ? `${saved} / ${cost} Credits` : 'Kostenlos';
+          const helperText = cost
+            ? (remaining === 0 ? 'Ziel erreicht!' : `Noch ${remaining} Credits`)
+            : 'Sofort verfügbar';
+          const costLabel = cost ? `${cost} Credits` : 'Kostenlos';
+          const saveControls = role === 'user' ? `
+            <div class="reward-save">
+              <input type="number" min="1" value="1" data-field="saveAmount" />
+              <button type="button" data-act="save" data-id="${r.id}" ${currentAvailable <= 0 ? 'disabled aria-disabled="true"' : ''}>Sparen</button>
+              ${saved > 0 ? `<button type="button" data-act="unsave" data-id="${r.id}">Zurück</button>` : ''}
+              <small>Freies Guthaben: ${currentAvailable}</small>
+            </div>
+          ` : '';
+          div.innerHTML = `
+            <div><strong>${r.title}</strong> <span class="muted">(${costLabel}${r.one_time ? ', einmalig' : ''})</span></div>
+            <div class="muted">${r.description || ''}</div>
+            <div class="muted">Gespart: ${saved} Credits</div>
+            <div class="reward-progress">
+              <span>${progressText}</span>
+              <span>${percent}%</span>
+            </div>
+            <div class="progress-track" aria-label="Fortschritt ${percent}%">
+              <div class="progress-fill" style="width:${percent}%;"></div>
+            </div>
+            <div class="muted">${helperText}</div>
+            ${saveControls}
+            <div class="row">${actions.join(' ')}</div>
+          `;
+          div.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn || btn.disabled) return;
+            const id = btn.getAttribute('data-id');
+            const act = btn.getAttribute('data-act');
+            try {
+              if (act === 'redeem') await api(`/rewards/${id}/redeem`, { method: 'POST' });
+              if (act === 'delete') await api(`/rewards/${id}`, { method: 'DELETE' });
+              if (act === 'save' || act === 'unsave') {
+                const card = btn.closest('.card');
+                const input = card?.querySelector('input[data-field="saveAmount"]');
+                const value = parseInt(input?.value, 10);
+                if (!value || value <= 0) { alert('Bitte Betrag eingeben'); return; }
+                const payload = { amount: act === 'save' ? value : -value };
+                await api(`/rewards/${id}/allocate`, { method: 'POST', body: JSON.stringify(payload) });
+              }
+              if (act === 'redeem' || act === 'delete' || act === 'save' || act === 'unsave') {
+                await loadAll();
+              }
+            } catch (e) { alert(e.message); }
+          });
+          rewardsEl.appendChild(div);
+        });
+      }
+
+      function renderLedger(list) {
+        ledgerEl.innerHTML = '';
+        // Admin-only adjustment form
+        if (currentRole === 'admin') {
+          const form = document.createElement('form');
+          form.className = 'row';
+          form.innerHTML = `
+            <input name="amount" type="number" step="1" placeholder="+/- Betrag" required />
+            <input name="reason" placeholder="Grund" />
+            <button type="submit">Korrigieren</button>
+          `;
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData(form);
+            try {
+              await api('/ledger/adjust', { method: 'POST', body: JSON.stringify({
+                amount: parseInt(fd.get('amount'), 10),
+                reason: fd.get('reason') || 'Korrektur'
+              })});
+              form.reset();
+              await loadAll();
+            } catch (err) { alert(err.message); }
+          });
+          ledgerEl.appendChild(form);
+        }
+
+        if (!list.length) {
+          const empty = document.createElement('div');
+          empty.className = 'muted';
+          empty.textContent = 'Keine Buchungen';
+          ledgerEl.appendChild(empty);
+          return;
+        }
+        list.forEach(l => {
+          const div = document.createElement('div');
+          div.className = 'row';
+          const amount = l.amount;
+          const cls = amount >= 0 ? 'ok' : 'err';
+          const adminActions = currentRole === 'admin' ? `<button data-del="${l.id}" style="color:#a00; margin-left: .5rem;">Löschen</button>` : '';
+          div.innerHTML = `<span class="${cls}">${amount >= 0 ? '+' : ''}${amount}</span> <span class="muted">${l.reason}</span> <span class="muted">(${l.created_at})</span> ${adminActions}`;
+          if (currentRole === 'admin') {
+            div.addEventListener('click', async (e) => {
+              const id = e.target.getAttribute && e.target.getAttribute('data-del');
+              if (!id) return;
+              if (!confirm('Eintrag wirklich löschen?')) return;
+              try { await api(`/ledger/${id}`, { method: 'DELETE' }); await loadAll(); } catch (err) { alert(err.message); }
+            });
+          }
+          ledgerEl.appendChild(div);
+        });
+      }
+
+      refreshBtn.addEventListener('click', loadAll);
+      logoutBtn.addEventListener('click', async () => { try { await api('/auth/logout', { method: 'POST' }); location.reload(); } catch (e) { alert(e.message); } });
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(loginForm);
+        try {
+          await api('/auth/login', { method: 'POST', body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }) });
+          await loadAll();
+        } catch (err) { alert(err.message); }
+      });
+      newUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(newUserForm);
+        try {
+          await api('/auth/register', { method: 'POST', body: JSON.stringify({
+            username: fd.get('username'), password: fd.get('password'), role: fd.get('role')
+          })});
+          alert('Benutzer angelegt');
+          newUserForm.reset();
+        } catch (err) { alert(err.message); }
+      });
+      newRecurringForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(newRecurringForm);
+        try {
+          await api('/recurring', { method: 'POST', body: JSON.stringify({
+            title: fd.get('title'), description: fd.get('description') || '', credits: Number(fd.get('credits')||0), frequency: fd.get('frequency'), startDate: fd.get('startDate') || undefined
+          })});
+          newRecurringForm.reset();
+          await loadAll();
+        } catch (err) { alert(err.message); }
+      });
+      async function refreshDiscordStatus() {
+        try {
+          const s = await api('/notify/status');
+          if (!s.configured) { discordStatus.textContent = 'Webhook nicht konfiguriert'; discordStatus.className='err'; }
+          else { discordStatus.textContent = `Webhook aktiv (Host: ${s.host})`; discordStatus.className='muted'; }
+        } catch (e) {
+          discordStatus.textContent = 'Webhook-Status unbekannt';
+        }
+      }
+
+      discordTestBtn.addEventListener('click', async () => {
+        try {
+          const r = await api('/notify/test', { method: 'POST' });
+          if (r.ok) { alert('Discord: OK'); }
+          else { alert('Discord-Fehler: ' + (r.status ? `${r.status} ${r.statusText||''}` : (r.error||'Unbekannt'))); }
+        } catch (err) { alert(err.message); }
+      });
+      newTaskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(newTaskForm);
+        try {
+          await api('/tasks', { method: 'POST', body: JSON.stringify({
+            title: fd.get('title'),
+            description: fd.get('description') || '',
+            credits: Number(fd.get('credits') || 0)
+          }) });
+          newTaskForm.reset();
+          await loadAll();
+        } catch (e) { alert(e.message); }
+      });
+      newRewardForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(newRewardForm);
+        try {
+          await api('/rewards', { method: 'POST', body: JSON.stringify({
+            title: fd.get('title'),
+            description: fd.get('description') || '',
+            cost: Number(fd.get('cost') || 0),
+            one_time: Boolean(fd.get('one_time'))
+          }) });
+          newRewardForm.reset();
+          await loadAll();
+        } catch (e) { alert(e.message); }
+      });
+
+      // Init
+      const savedPin = localStorage.getItem('pin');
+      // On load: try to fetch session
+      (async function init() {
+        try {
+          const me = await api('/auth/me');
+          currentRole = me.role || 'unknown';
+          currentUser = me.username || null;
+          if (currentRole === 'unknown') {
+            loginBox.style.display = '';
+            statusEl.textContent = 'Bitte anmelden';
+            statusEl.className = 'muted';
+          } else {
+            await loadAll();
+          }
+          renderVisibility();
+          if (currentRole === 'admin') { refreshDiscordStatus(); }
+        } catch (_) {
+          loginBox.style.display = '';
+        }
+      })();
+
+      function renderVisibility() {
+        if (appContent) appContent.style.display = currentRole === 'unknown' ? 'none' : '';
+        if (loginBox) loginBox.style.display = currentRole === 'unknown' ? '' : 'none';
+        whoEl.textContent = currentUser ? `${currentUser} (${currentRole})` : '';
+        logoutBtn.style.display = currentRole === 'unknown' ? 'none' : '';
+        adminCreateTask.style.display = currentRole === 'admin' ? '' : 'none';
+        adminCreateReward.style.display = currentRole === 'admin' ? '' : 'none';
+        adminUsers.style.display = currentRole === 'admin' ? '' : 'none';
+        // Ledger actions already role-guarded above
+      }
+
+      function renderRecurring(list) {
+        if (currentRole !== 'admin') { recurringList.innerHTML = ''; return; }
+        if (!list || !list.length) { recurringList.innerHTML = '<div class="muted">Keine Vorlagen</div>'; return; }
+        recurringList.innerHTML = '';
+        list.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'row';
+          const active = r.active ? 'aktiv' : 'inaktiv';
+          div.innerHTML = `
+            <span><strong>${r.title}</strong> <span class="muted">(${r.frequency}, nächste: ${r.next_run || '-'}, ${active})</span></span>
+            <button data-act="run" data-id="${r.id}">Jetzt erzeugen</button>
+            <button data-act="toggle" data-id="${r.id}">${r.active ? 'Deaktivieren' : 'Aktivieren'}</button>
+            <button data-act="delete" data-id="${r.id}" style="color:#a00">Löschen</button>
+          `;
+          div.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button'); if (!btn) return;
+            const id = btn.getAttribute('data-id'); const act = btn.getAttribute('data-act');
+            try {
+              if (act === 'run') await api(`/recurring/${id}/run`, { method: 'POST' });
+              if (act === 'toggle') await api(`/recurring/${id}`, { method: 'PATCH', body: JSON.stringify({ active: !(r.active) }) });
+              if (act === 'delete') await api(`/recurring/${id}`, { method: 'DELETE' });
+              await loadAll();
+            } catch (err) { alert(err.message); }
+          });
+          recurringList.appendChild(div);
+        });
+      }
+
+      function renderUsers(list) {
+        if (currentRole !== 'admin') { usersList.innerHTML = ''; return; }
+        if (!list || !list.length) { usersList.innerHTML = '<div class="muted">Keine Benutzer</div>'; return; }
+        usersList.innerHTML = '';
+        list.forEach(u => {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = `
+            <span><strong>${u.username}</strong> <span class="muted">(${u.role})</span></span>
+            <button data-act="pw" data-id="${u.id}">Passwort setzen</button>
+            <button data-act="role" data-id="${u.id}">Rolle wechseln</button>
+            <button data-act="del" data-id="${u.id}" style="color:#a00">Löschen</button>
+          `;
+          row.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button'); if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            const act = btn.getAttribute('data-act');
+            try {
+              if (act === 'pw') {
+                const pwd = prompt('Neues Passwort für ' + u.username + ':');
+                if (!pwd) return;
+                await api(`/users/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password: pwd }) });
+                alert('Passwort aktualisiert');
+              }
+              if (act === 'role') {
+                const target = u.role === 'admin' ? 'user' : 'admin';
+                if (!confirm(`Rolle ändern zu ${target}?`)) return;
+                const updated = await api(`/users/${id}`, { method: 'PATCH', body: JSON.stringify({ role: target }) });
+                u.role = updated.role;
+              }
+              if (act === 'del') {
+                if (!confirm('Benutzer wirklich löschen?')) return;
+                await api(`/users/${id}`, { method: 'DELETE' });
+              }
+              await loadAll();
+            } catch (err) { alert(err.message); }
+          });
+          usersList.appendChild(row);
+        });
+      }
+    </script>
+  </body>
+  </html>

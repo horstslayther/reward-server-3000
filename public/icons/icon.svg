@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Reward 3000 Icon">
+  <!-- Black rounded square, gold star with white outline, white R in the star (GTA-inspired, not affiliated) -->
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="#000000"/>
+  <!-- Slightly larger star, no outline -->
+  <g transform="translate(256 256) scale(1.0)">
+    <path d="M0 -150 L43 -50 L150 -40 L65 25 L90 130 L0 78 L-90 130 L-65 25 L-150 -40 L-43 -50 Z"
+          fill="#FFC107" />
+  </g>
+  <text x="50%" y="62%" text-anchor="middle"
+        font-family="'Segoe UI', system-ui, Arial, sans-serif"
+        font-weight="1000" font-size="190" fill="#FFFFFF">R</text>
+</svg>
