@@ -1,14 +1,3 @@
-Code Notes
-
-src/server.js bootstraps Express, loads env vars, turns SVG icons into PNGs on start, serves the static UI, exposes /health, and wires the auth-gated routers for tasks, rewards, recurring jobs, users, balances, notifications, and auth (src/server.js (line 17), src/server.js (line 31), src/server.js (line 36), src/server.js (line 48)).
-SQLite is initialized under data/ with tables for tasks, rewards, ledger, users, recurring templates, and per-user savings; helper queries keep running totals for balance/reservations (src/db.js (line 5), src/db.js (line 13), src/db.js (line 63), src/db.js (line 109)).
-Session management relies on express-session + connect-sqlite3, and an initial admin account is auto-seeded when the user table is empty (src/session.js (line 3), src/routes/auth.js (line 7), src/routes/auth.js (line 17)).
-Recurring templates are generated lazily each time tasks are fetched (or via /recurring/:id/run) and skip creation while an older sibling task is still open (src/routes/tasks.js (line 11), src/recurring.js (line 26)).
-Rewards support saving/reserving credits per user, enforce available-balance checks, and write to the ledger when redeemed; balance and ledger endpoints expose totals plus admin adjustments/deletions (src/routes/rewards.js (line 63), src/routes/balance.js (line 16), src/routes/balance.js (line 22)).
-Discord webhook helpers expose status/test endpoints for admins and wrap all server-side notifications (src/notify.js (line 7), src/notify.js (line 33), src/routes/notify.js (line 7)).
-The UI is a single-page PWA served from public/, registers a service worker for offline shell caching, and relies on the REST API described above (public/index.html (line 639), public/sw.js (line 1), public/manifest.webmanifest (line 1)). PNG icons are produced on demand through Sharp (src/generate-icons.js (line 3)).
-Filesystem access is read-only here, so I couldn’t overwrite README.md. Below is a refreshed README you can copy in.
-
 # Reward Server
 
 Ein leichtgewichtiger Node/Express-Server mit SQLite-Storage und einer statischen, installierbaren Web-App für Haushaltsaufgaben, Credits und Rewards. Teens haken Aufgaben ab, Eltern genehmigen, das Guthaben wird im Ledger verbucht und Rewards lassen sich freischalten – inklusive Discord-Benachrichtigungen und Offline-PWA.
