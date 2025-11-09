@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   completed_at TEXT,
   approved_at TEXT,
+  deleted_at TEXT,
   recurring_id INTEGER
 );
 
@@ -87,7 +88,22 @@ function ensureRecurringColumn() {
   }
 }
 
+function ensureDeletedAtColumn() {
+  try {
+    const columns = db.prepare('PRAGMA table_info(tasks)').all();
+    const hasDeletedAt = columns.some((c) => c.name === 'deleted_at');
+    if (!hasDeletedAt) {
+      db.exec('ALTER TABLE tasks ADD COLUMN deleted_at TEXT');
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[db] Failed to ensure deleted_at column', err);
+    throw err;
+  }
+}
+
 ensureRecurringColumn();
+ensureDeletedAtColumn();
 
 const stmtBalance = db.prepare('SELECT IFNULL(SUM(amount), 0) AS balance FROM ledger');
 const stmtReservedForUser = db.prepare('SELECT IFNULL(SUM(amount), 0) AS reserved FROM reward_savings WHERE user_id = ?');

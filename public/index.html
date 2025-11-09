@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reward 3000</title>
-    <meta name="theme-color" content="#0a7cff" />
+    <meta name="theme-color" content="#050a1f" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Icons -->
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -15,36 +15,513 @@
     <!-- iOS Homescreen PNG icon -->
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <style>
-      body { font-family: system-ui, Arial, sans-serif; margin: 1rem; }
-      header { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-      input, button { font-size: 1rem; padding: 0.4rem 0.6rem; }
-      section { margin-top: 1rem; }
-      h2 { margin-bottom: 0.4rem; }
-      .row { display: flex; gap: 0.5rem; align-items: center; margin: 0.25rem 0; }
-      .muted { color: #666; font-size: 0.9rem; }
-      .ok { color: #007f00; }
-      .err { color: #a00; }
-      .card { border: 1px solid #ddd; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.5rem; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.8rem; }
-      form > * { margin-right: 0.4rem; }
-      .balance-details { font-size: 0.85rem; color: #444; }
-      .reward-card { position: relative; }
-      .reward-ready { border-color: #0fa958; box-shadow: 0 0 0 1px rgba(15, 169, 88, 0.2); }
-      .reward-progress { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-top: 0.4rem; }
-      .progress-track { background: #f0f4f8; border-radius: 999px; height: 0.45rem; overflow: hidden; margin-top: 0.2rem; }
-      .progress-fill { background: #0a7cff; height: 100%; width: 0; transition: width 0.3s ease; }
-      .reward-ready .progress-fill { background: #0fa958; }
-      .reward-save { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
-      .reward-save input { width: 4rem; padding: 0.25rem 0.4rem; }
-      .reward-save small { font-size: 0.8rem; color: #666; }
+      :root {
+        color-scheme: dark;
+        --bg: #03030a;
+        --bg-alt: #070b1d;
+        --panel: rgba(10, 14, 28, 0.92);
+        --panel-border: rgba(250, 229, 173, 0.18);
+        --panel-soft: rgba(255, 255, 255, 0.03);
+        --text: #f5f7ff;
+        --text-muted: #94a3c1;
+        --gold: #f7d774;
+        --gold-strong: #ffed9f;
+        --accent: #23b3ff;
+        --success: #7df7c5;
+        --error: #ff9a9a;
+        --shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: radial-gradient(circle at top, rgba(20, 26, 48, 0.9), rgba(3, 3, 10, 0.95));
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        padding: 2.5rem 1.25rem 3rem;
+        position: relative;
+        overflow-x: hidden;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image:
+          radial-gradient(circle at 10% 20%, rgba(255, 215, 128, 0.15), transparent 45%),
+          radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.08), transparent 55%),
+          repeating-linear-gradient(
+            120deg,
+            rgba(247, 215, 116, 0.05),
+            rgba(247, 215, 116, 0.05) 2px,
+            transparent 2px,
+            transparent 8px
+          );
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle, rgba(255, 193, 82, 0.07) 0%, transparent 45%);
+        pointer-events: none;
+      }
+      .app-shell {
+        width: min(1200px, 100%);
+        position: relative;
+        z-index: 1;
+      }
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        padding: 1.5rem 1.75rem;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        margin-bottom: 1.25rem;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .logo-coin {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, var(--gold-strong), var(--gold));
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.45), inset 0 0 20px rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #5a3c00;
+        letter-spacing: 1px;
+        animation: coinSpin 6s linear infinite;
+      }
+      @keyframes coinSpin {
+        0% { transform: rotateY(0deg); }
+        50% { transform: rotateY(180deg) scale(0.9); }
+        100% { transform: rotateY(360deg); }
+      }
+      .brand strong {
+        font-size: 1.5rem;
+        display: block;
+      }
+      .brand span {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+      }
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      section {
+        margin-top: 1.4rem;
+      }
+      .motivation-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.5rem 1.75rem;
+        border-radius: 20px;
+        background: linear-gradient(120deg, rgba(13, 18, 35, 0.95), rgba(29, 20, 8, 0.95));
+        border: 1px solid rgba(247, 215, 116, 0.35);
+        box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
+      }
+      .motivation-label {
+        letter-spacing: 0.2rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      #motivationLine {
+        font-size: 1.35rem;
+        margin: 0 0 0.35rem;
+      }
+      .motivation-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(247, 215, 116, 0.15);
+        border: 1px solid rgba(247, 215, 116, 0.45);
+        color: var(--gold-strong);
+        font-size: 0.85rem;
+      }
+      .motivation-badge::before {
+        content: 'GO';
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+      .coin-stack {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+      }
+      .coin {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, var(--gold-strong), var(--gold) 60%, #c98914 100%);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        animation: coinPulse 3s ease-in-out infinite;
+      }
+      .coin-md { width: 2.6rem; height: 2.6rem; animation-delay: 0.3s; }
+      .coin-sm { width: 2.2rem; height: 2.2rem; animation-delay: 0.6s; }
+      .coin-lg { width: 3.5rem; height: 3.5rem; }
+      @keyframes coinPulse {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+      .app-panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        box-shadow: var(--shadow);
+        border-radius: 24px;
+        padding: 1.5rem 1.75rem;
+      }
+      h2 {
+        margin-bottom: 0.6rem;
+        font-size: 1.05rem;
+      }
+      .row {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        margin: 0.35rem 0;
+        flex-wrap: wrap;
+      }
+      .stay-logged {
+        justify-content: flex-start;
+      }
+      .stay-logged label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+      form > * {
+        margin-right: 0.5rem;
+      }
+      form > *:last-child {
+        margin-right: 0;
+      }
+      .card {
+        background: rgba(13, 17, 33, 0.85);
+        border: 1px solid var(--panel-soft);
+        padding: 0.9rem 1rem;
+        border-radius: 16px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      }
+      .task-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+      .task-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .task-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.12rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border: 1px solid transparent;
+        margin-left: 0.4rem;
+      }
+      .task-status-open {
+        border-color: rgba(35, 179, 255, 0.4);
+        color: #23b3ff;
+        background: rgba(35, 179, 255, 0.12);
+      }
+      .task-status-pending_approval {
+        border-color: rgba(247, 215, 116, 0.4);
+        color: var(--gold-strong);
+        background: rgba(247, 215, 116, 0.12);
+      }
+      .task-status-approved {
+        border-color: rgba(125, 247, 197, 0.4);
+        color: var(--success);
+        background: rgba(125, 247, 197, 0.12);
+      }
+      .task-status-deleted {
+        border-color: rgba(255, 255, 255, 0.2);
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+      }
+      .task-tabs {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 0.8rem;
+        flex-wrap: wrap;
+      }
+      .task-tabs button {
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-muted);
+        padding: 0.35rem 0.9rem;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: border 0.2s ease, background 0.2s ease, color 0.2s ease;
+      }
+      .task-tabs button.active {
+        border-color: rgba(247, 215, 116, 0.6);
+        background: rgba(247, 215, 116, 0.15);
+        color: var(--gold-strong);
+      }
+      .task-tabs button:hover:not(.active) {
+        border-color: rgba(255, 255, 255, 0.3);
+        color: var(--text);
+      }
+      .task-tabs .tab-count {
+        font-size: 0.8rem;
+        opacity: 0.7;
+      }
+      .task-tabs .tab-label {
+        white-space: nowrap;
+      }
+      .muted {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+      .ok { color: var(--success); }
+      .err { color: var(--error); }
+      input, button, select {
+        font-size: 1rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        transition: border 0.15s ease, background 0.15s ease, transform 0.15s ease;
+      }
+      input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        padding: 0;
+        border-radius: 0.35rem;
+        cursor: pointer;
+        accent-color: var(--gold);
+        background: transparent;
+      }
+      textarea {
+        font-size: 1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+      }
+      input:focus, button:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--gold);
+        box-shadow: 0 0 0 2px rgba(247, 215, 116, 0.35);
+      }
+      button {
+        cursor: pointer;
+        background: linear-gradient(120deg, var(--gold), #f0b23c);
+        color: #2f1a02;
+        font-weight: 600;
+        border: none;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+      }
+      button:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-muted);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        box-shadow: none;
+      }
+      .balance-details {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .reward-card {
+        position: relative;
+        overflow: hidden;
+      }
+      .reward-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(247, 215, 116, 0.08), transparent 45%);
+        pointer-events: none;
+      }
+      .reward-ready {
+        border-color: rgba(125, 247, 197, 0.6);
+        box-shadow: 0 0 0 1px rgba(125, 247, 197, 0.35), 0 0 30px rgba(125, 247, 197, 0.25);
+      }
+      .reward-progress {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+      }
+      .progress-track {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 999px;
+        height: 0.5rem;
+        overflow: hidden;
+        margin-top: 0.3rem;
+      }
+      .progress-fill {
+        background: linear-gradient(90deg, var(--accent), var(--gold));
+        height: 100%;
+        width: 0;
+        transition: width 0.3s ease;
+      }
+      .reward-ready .progress-fill {
+        background: linear-gradient(90deg, var(--gold), #fef3b5);
+      }
+      .reward-save {
+        display: flex;
+        gap: 0.45rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 0.6rem;
+      }
+      .reward-save input {
+        width: 4.5rem;
+        border-radius: 12px;
+      }
+      .reward-save small {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+      .ledger-list {
+        margin-top: 0.5rem;
+      }
+      #ledger form {
+        margin-bottom: 0.75rem;
+      }
+      .ledger-entry {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0.6rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .ledger-entry:last-child {
+        border-bottom: none;
+      }
+      .ledger-line {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        align-items: baseline;
+      }
+      .ledger-amount {
+        font-weight: 600;
+        min-width: 3.2rem;
+      }
+      .ledger-date {
+        font-size: 0.85rem;
+      }
+      .ledger-actions button {
+        align-self: flex-start;
+      }
+      .ledger-actions {
+        display: flex;
+      }
+      .btn-danger {
+        background: rgba(255, 154, 154, 0.15);
+        border: 1px solid rgba(255, 154, 154, 0.45);
+        color: var(--error);
+      }
+      .btn-danger:hover:not(:disabled) {
+        background: rgba(255, 154, 154, 0.25);
+      }
+      #loginBox {
+        margin-top: 1.5rem;
+        background: rgba(13, 17, 33, 0.85);
+        border-radius: 20px;
+        border: 1px solid var(--panel-border);
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+      }
+      @media (max-width: 768px) {
+        body {
+          padding: 1.25rem 0.75rem 2rem;
+        }
+        .app-header, .motivation-banner {
+          padding: 1.25rem;
+        }
+        .brand strong {
+          font-size: 1.2rem;
+        }
+        .coin {
+          width: 2.3rem;
+          height: 2.3rem;
+        }
+      }
     </style>
   </head>
   <body>
-      <header>
-        <strong>Reward 3000</strong>
-        <span id="status" class="muted">Nicht verbunden</span>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <div class="logo-coin" aria-hidden="true">G</div>
+          <div>
+            <strong>Reward 3000</strong>
+            <span>Dark Mode Motivation</span>
+          </div>
+        </div>
+        <span id="status" class="status-pill muted">Nicht verbunden</span>
       </header>
-    <div id="appContent" style="display:none">
+
+      <section class="motivation-banner" aria-live="polite">
+        <div>
+          <p class="motivation-label">Gold Rush Modus</p>
+          <p id="motivationLine">Starte in den Tag, deine Coins warten.</p>
+          <span id="motivationBadge" class="motivation-badge">Stay Focused</span>
+        </div>
+        <div class="coin-stack" aria-hidden="true">
+          <span class="coin coin-lg"></span>
+          <span class="coin coin-md"></span>
+          <span class="coin coin-sm"></span>
+        </div>
+      </section>
+
+      <div id="appContent" class="app-panel" style="display:none">
     <section>
       <div class="row">
         <button id="refresh">Aktualisieren</button>
@@ -58,6 +535,12 @@
     <section class="grid">
       <div>
         <h2>Tasks</h2>
+        <div id="taskTabs" class="task-tabs" style="display:none">
+          <button type="button" data-tab="active"><span class="tab-label">Laufende</span><span class="tab-count"></span></button>
+          <button type="button" data-tab="pending"><span class="tab-label">Prüfen</span><span class="tab-count"></span></button>
+          <button type="button" data-tab="archive"><span class="tab-label">Archiv</span><span class="tab-count"></span></button>
+          <button type="button" data-tab="deleted"><span class="tab-label">Papierkorb</span><span class="tab-count"></span></button>
+        </div>
         <div id="tasks"></div>
       </div>
       <div>
@@ -133,16 +616,23 @@
         <div id="recurringList" class="muted" style="margin-top:.5rem"></div>
       </div>
     </section>
-    </div>
+      </div>
 
-    <section id="loginBox" class="card" style="max-width:420px; display:none;">
-      <h2>Anmeldung</h2>
-      <form id="loginForm">
-        <div class="row"><input name="username" placeholder="Benutzername" required /></div>
-        <div class="row"><input name="password" type="password" placeholder="Passwort" required /></div>
-        <div class="row"><button type="submit">Einloggen</button></div>
-      </form>
-    </section>
+      <section id="loginBox" class="card" style="max-width:420px; display:none;">
+        <h2>Anmeldung</h2>
+        <form id="loginForm">
+          <div class="row"><input name="username" placeholder="Benutzername" required /></div>
+          <div class="row"><input name="password" type="password" placeholder="Passwort" required /></div>
+          <div class="row stay-logged">
+            <label>
+              <input name="stayLoggedIn" type="checkbox" />
+              Angemeldet bleiben
+            </label>
+          </div>
+          <div class="row"><button type="submit">Einloggen</button></div>
+        </form>
+      </section>
+    </div>
 
     <script>
       // Register Service Worker for PWA
@@ -166,6 +656,8 @@
       const loginBox = document.getElementById('loginBox');
       const appContent = document.getElementById('appContent');
       const loginForm = document.getElementById('loginForm');
+      const stayLoggedInInput = loginForm.querySelector('input[name=\"stayLoggedIn\"]');
+      const taskTabs = document.getElementById('taskTabs');
       const adminCreateTask = document.getElementById('adminCreateTask');
       const adminCreateReward = document.getElementById('adminCreateReward');
       const adminUsers = document.getElementById('adminUsers');
@@ -175,6 +667,25 @@
       const discordTestBtn = document.getElementById('discordTest');
       const discordStatus = document.getElementById('discordStatus');
       const usersList = document.getElementById('usersList');
+      const motivationLine = document.getElementById('motivationLine');
+      const motivationBadge = document.getElementById('motivationBadge');
+      const TASK_STATUS_LABELS = {
+        open: 'Laufend',
+        pending_approval: 'Prüfung',
+        approved: 'Abgeschlossen',
+        deleted: 'Papierkorb'
+      };
+      const TASK_TAB_CONFIG = {
+        active: { label: 'Laufende', statuses: ['open'], empty: 'Keine laufenden Tasks' },
+        pending: { label: 'Prüfen', statuses: ['pending_approval'], empty: 'Aktuell wartet nichts auf Prüfung' },
+        archive: { label: 'Archiv', statuses: ['approved'], empty: 'Noch keine erledigten Tasks' },
+        deleted: { label: 'Papierkorb', statuses: ['deleted'], empty: 'Papierkorb ist leer' }
+      };
+
+      if (stayLoggedInInput) {
+        const savedStayPref = localStorage.getItem('stayLoggedIn');
+        stayLoggedInInput.checked = savedStayPref !== null ? savedStayPref === 'true' : true;
+      }
 
       let currentRole = 'unknown';
       let currentUser = null;
@@ -182,6 +693,25 @@
       let currentReserved = 0;
       let currentAvailable = 0;
       let rewardSavings = {};
+      let latestTasks = [];
+      const savedTaskTab = localStorage.getItem('taskTab');
+      let currentTaskTab = TASK_TAB_CONFIG[savedTaskTab] ? savedTaskTab : 'active';
+      let taskTabsInitialized = false;
+
+      const motivationMessages = [
+        { line: 'Dark Mode an, Fokus an.', badge: 'Focus Run' },
+        { line: 'Jede erledigte Aufgabe stapelt Coins.', badge: 'Coin Stack' },
+        { line: 'Mini steps, maxi Gold.', badge: 'Daily Flow' },
+        { line: 'Rewards lieben Disziplin.', badge: 'Consistency' },
+        { line: 'Mehr Momentum, mehr Coins.', badge: 'Momentum' }
+      ];
+      const motivationRewardMessages = [
+        { line: 'Cha-ching! Reward gesichert.', badge: 'Cash In' },
+        { line: 'Kasse klingelt, goen dir.', badge: 'Gold Drop' },
+        { line: 'Mission erfuellt, Coins unterwegs.', badge: 'Victory Lap' }
+      ];
+      let lastMotivationLine = '';
+      let audioCtx;
 
       function headers() {
         const pin = localStorage.getItem('pin') || '';
@@ -199,7 +729,78 @@
         return res.text();
       }
 
-      async function loadAll() {
+      function pickMotivation(pool) {
+        if (!Array.isArray(pool) || !pool.length) return null;
+        let selection = pool[Math.floor(Math.random() * pool.length)];
+        if (pool.length > 1) {
+          let guard = 0;
+          while (selection.line === lastMotivationLine && guard < 4) {
+            selection = pool[Math.floor(Math.random() * pool.length)];
+            guard += 1;
+          }
+        }
+        lastMotivationLine = selection.line;
+        return selection;
+      }
+
+      function updateMotivation(mode = 'focus') {
+        if (!motivationLine || !motivationBadge) return;
+        const pool = mode === 'redeem' ? motivationRewardMessages : motivationMessages;
+        const next = pickMotivation(pool);
+        if (!next) return;
+        motivationLine.textContent = next.line;
+        motivationBadge.textContent = next.badge;
+      }
+
+      function playCashSound() {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          if (!audioCtx) {
+            audioCtx = new AudioCtx();
+          }
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+          const ctx = audioCtx;
+          const now = ctx.currentTime;
+          const master = ctx.createGain();
+          master.gain.setValueAtTime(0.0001, now);
+          master.gain.exponentialRampToValueAtTime(0.4, now + 0.03);
+          master.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+          const ping = ctx.createOscillator();
+          ping.type = 'triangle';
+          ping.frequency.setValueAtTime(880, now);
+          ping.frequency.exponentialRampToValueAtTime(523.25, now + 0.25);
+          const shimmer = ctx.createOscillator();
+          shimmer.type = 'square';
+          shimmer.frequency.setValueAtTime(1320, now + 0.05);
+          shimmer.frequency.exponentialRampToValueAtTime(659.25, now + 0.3);
+          const click = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+          const data = click.getChannelData(0);
+          for (let i = 0; i < data.length; i += 1) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-20 * (i / data.length));
+          }
+          const clickSource = ctx.createBufferSource();
+          clickSource.buffer = click;
+          ping.connect(master);
+          shimmer.connect(master);
+          clickSource.connect(master);
+          master.connect(ctx.destination);
+          ping.start(now);
+          ping.stop(now + 0.35);
+          shimmer.start(now + 0.05);
+          shimmer.stop(now + 0.35);
+          clickSource.start(now);
+        } catch (_) {
+          // Audio unavailable
+        }
+      }
+
+      updateMotivation();
+
+      async function loadAll(reason) {
+        const motive = typeof reason === 'string' ? reason : 'refresh';
         try {
           statusEl.textContent = 'Lade...';
           const [me, bal, tasks, rewards, ledger, recurring, users] = await Promise.all([
@@ -230,37 +831,89 @@
           renderLedger(ledger);
           renderRecurring(recurring);
           renderUsers(users);
-          statusEl.textContent = 'OK'; statusEl.className = 'ok';
+          statusEl.textContent = 'OK'; statusEl.className = 'status-pill ok';
+          updateMotivation(motive === 'redeem' ? 'redeem' : 'focus');
           renderVisibility();
           if (currentRole === 'admin') { refreshDiscordStatus(); }
         } catch (e) {
-          statusEl.textContent = 'Fehler: ' + e.message; statusEl.className = 'err';
+          statusEl.textContent = 'Fehler: ' + e.message; statusEl.className = 'status-pill err';
         }
       }
 
       function renderTasks(list) {
+        latestTasks = Array.isArray(list) ? list : [];
         const role = currentRole;
+        if (taskTabs) {
+          taskTabs.style.display = role === 'admin' ? 'flex' : 'none';
+        }
+        if (role === 'admin') {
+          initTaskTabs();
+          updateTaskTabUi();
+          if (!TASK_TAB_CONFIG[currentTaskTab]) {
+            currentTaskTab = 'active';
+            localStorage.setItem('taskTab', currentTaskTab);
+          }
+          const config = TASK_TAB_CONFIG[currentTaskTab] || TASK_TAB_CONFIG.active;
+          const filtered = filterTasksForTab(currentTaskTab);
+          renderTaskCards(filtered, config?.empty || 'Keine Tasks');
+          return;
+        }
+        const visible = latestTasks.filter((t) => t.status === 'open' || t.status === 'pending_approval');
+        renderTaskCards(visible, 'Keine Tasks');
+      }
+
+      function filterTasksForTab(tab) {
+        const config = TASK_TAB_CONFIG[tab];
+        if (!config) return [];
+        return latestTasks.filter((task) => config.statuses.includes(task.status));
+      }
+
+      function renderTaskCards(list, emptyMessage) {
         tasksEl.innerHTML = '';
-        if (!list.length) { tasksEl.innerHTML = '<div class="muted">Keine Tasks</div>'; return; }
-        list.forEach(t => {
-          const div = document.createElement('div');
-          div.className = 'card';
-          const actions = [];
-          if (t.status === 'open' && role !== 'admin') {
-            actions.push(`<button data-act="complete" data-id="${t.id}">Fertig</button>`);
-          }
-          if (t.status === 'pending_approval' && role === 'admin') {
-            actions.push(`<button data-act="approve" data-id="${t.id}">Genehmigen</button>`);
-            actions.push(`<button data-act="reject" data-id="${t.id}">Ablehnen</button>`);
-          }
-          if (role === 'admin') {
-            actions.push(`<button data-act="delete" data-id="${t.id}" style="float:right;color:#a00;">Löschen</button>`);
-          }
-          div.innerHTML = `
-            <div><strong>${t.title}</strong> <span class="muted">(${t.credits} Credits) — Status: ${t.status}</span></div>
-            <div class="muted">${t.description || ''}</div>
-            <div class="row">${actions.join(' ')}</div>
-          `;
+        if (!list.length) {
+          tasksEl.innerHTML = `<div class="muted">${emptyMessage}</div>`;
+          return;
+        }
+        list.forEach((task) => {
+          tasksEl.appendChild(createTaskCard(task));
+        });
+      }
+
+      function createTaskCard(task) {
+        const div = document.createElement('div');
+        div.className = 'card task-card';
+        const statusClass = `task-status-${task.status}`;
+        const statusLabel = TASK_STATUS_LABELS[task.status] || task.status;
+        const credits = Number(task.credits) || 0;
+        const actions = [];
+        const role = currentRole;
+        if (task.status === 'open' && role !== 'admin') {
+          actions.push(`<button data-act="complete" data-id="${task.id}">Fertig</button>`);
+        }
+        if (task.status === 'pending_approval' && role === 'admin') {
+          actions.push(`<button data-act="approve" data-id="${task.id}">Genehmigen</button>`);
+          actions.push(`<button data-act="reject" data-id="${task.id}">Ablehnen</button>`);
+        }
+        if (role === 'admin' && task.status !== 'deleted') {
+          actions.push(`<button data-act="delete" data-id="${task.id}" style="color:#ffba53;">In Papierkorb</button>`);
+        }
+        if (role === 'admin' && task.status === 'deleted') {
+          actions.push(`<button data-act="restore" data-id="${task.id}">Wiederherstellen</button>`);
+          actions.push(`<button data-act="purge" data-id="${task.id}" style="color:#ff9a9a;">Endgültig löschen</button>`);
+        }
+        const actionRow = actions.length ? `<div class="row">${actions.join(' ')}</div>` : '';
+        div.innerHTML = `
+          <div class="task-card-header">
+            <div>
+              <strong>${task.title}</strong>
+              <span class="task-status ${statusClass}">${statusLabel}</span>
+            </div>
+            <span class="muted">${credits} Credits</span>
+          </div>
+          <div class="muted">${task.description || ''}</div>
+          ${actionRow}
+        `;
+        if (actions.length) {
           div.addEventListener('click', async (e) => {
             const btn = e.target.closest('button');
             if (!btn) return;
@@ -270,11 +923,53 @@
               if (act === 'complete') await api(`/tasks/${id}/complete`, { method: 'PATCH' });
               if (act === 'approve') await api(`/tasks/${id}/approve`, { method: 'PATCH' });
               if (act === 'reject') await api(`/tasks/${id}/reject`, { method: 'PATCH' });
-              if (act === 'delete') await api(`/tasks/${id}`, { method: 'DELETE' });
+              if (act === 'delete') {
+                if (!confirm('In den Papierkorb verschieben?')) return;
+                await api(`/tasks/${id}`, { method: 'DELETE' });
+              }
+              if (act === 'restore') await api(`/tasks/${id}/restore`, { method: 'PATCH' });
+              if (act === 'purge') {
+                if (!confirm('Endgültig löschen?')) return;
+                await api(`/tasks/${id}/purge`, { method: 'DELETE' });
+              }
               await loadAll();
-            } catch (e) { alert(e.message); }
+            } catch (err) { alert(err.message); }
           });
-          tasksEl.appendChild(div);
+        }
+        return div;
+      }
+
+      function initTaskTabs() {
+        if (!taskTabs || taskTabsInitialized) return;
+        taskTabs.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-tab]');
+          if (!btn) return;
+          const tab = btn.getAttribute('data-tab');
+          if (!TASK_TAB_CONFIG[tab]) return;
+          currentTaskTab = tab;
+          localStorage.setItem('taskTab', currentTaskTab);
+          updateTaskTabUi();
+          const config = TASK_TAB_CONFIG[currentTaskTab];
+          renderTaskCards(filterTasksForTab(currentTaskTab), config?.empty || 'Keine Tasks');
+        });
+        taskTabsInitialized = true;
+      }
+
+      function updateTaskTabUi() {
+        if (!taskTabs) return;
+        const buttons = taskTabs.querySelectorAll('[data-tab]');
+        buttons.forEach((btn) => {
+          const tab = btn.getAttribute('data-tab');
+          const config = TASK_TAB_CONFIG[tab];
+          if (!config) {
+            btn.style.display = 'none';
+            return;
+          }
+          const count = latestTasks.filter((task) => config.statuses.includes(task.status)).length;
+          const countEl = btn.querySelector('.tab-count');
+          if (countEl) countEl.textContent = count > 0 ? count : '';
+          btn.classList.toggle('active', tab === currentTaskTab);
+          btn.setAttribute('aria-pressed', tab === currentTaskTab ? 'true' : 'false');
         });
       }
 
@@ -335,7 +1030,10 @@
             const id = btn.getAttribute('data-id');
             const act = btn.getAttribute('data-act');
             try {
-              if (act === 'redeem') await api(`/rewards/${id}/redeem`, { method: 'POST' });
+              if (act === 'redeem') {
+                await api(`/rewards/${id}/redeem`, { method: 'POST' });
+                playCashSound();
+              }
               if (act === 'delete') await api(`/rewards/${id}`, { method: 'DELETE' });
               if (act === 'save' || act === 'unsave') {
                 const card = btn.closest('.card');
@@ -346,7 +1044,8 @@
                 await api(`/rewards/${id}/allocate`, { method: 'POST', body: JSON.stringify(payload) });
               }
               if (act === 'redeem' || act === 'delete' || act === 'save' || act === 'unsave') {
-                await loadAll();
+                const reason = act === 'redeem' ? 'redeem' : 'refresh';
+                await loadAll(reason);
               }
             } catch (e) { alert(e.message); }
           });
@@ -356,6 +1055,7 @@
 
       function renderLedger(list) {
         ledgerEl.innerHTML = '';
+        ledgerEl.classList.add('ledger-list');
         // Admin-only adjustment form
         if (currentRole === 'admin') {
           const form = document.createElement('form');
@@ -388,21 +1088,30 @@
           return;
         }
         list.forEach(l => {
-          const div = document.createElement('div');
-          div.className = 'row';
+          const entry = document.createElement('div');
+          entry.className = 'ledger-entry';
           const amount = l.amount;
           const cls = amount >= 0 ? 'ok' : 'err';
-          const adminActions = currentRole === 'admin' ? `<button data-del="${l.id}" style="color:#a00; margin-left: .5rem;">Löschen</button>` : '';
-          div.innerHTML = `<span class="${cls}">${amount >= 0 ? '+' : ''}${amount}</span> <span class="muted">${l.reason}</span> <span class="muted">(${l.created_at})</span> ${adminActions}`;
+          const adminActions = currentRole === 'admin'
+            ? `<div class="ledger-actions"><button type="button" class="btn-danger" data-del="${l.id}">Loeschen</button></div>`
+            : '';
+          entry.innerHTML = `
+            <div class="ledger-line">
+              <span class="ledger-amount ${cls}">${amount >= 0 ? '+' : ''}${amount}</span>
+              <span class="muted ledger-reason">${l.reason}</span>
+              <span class="muted ledger-date">(${l.created_at})</span>
+            </div>
+            ${adminActions}
+          `;
           if (currentRole === 'admin') {
-            div.addEventListener('click', async (e) => {
+            entry.addEventListener('click', async (e) => {
               const id = e.target.getAttribute && e.target.getAttribute('data-del');
               if (!id) return;
               if (!confirm('Eintrag wirklich löschen?')) return;
               try { await api(`/ledger/${id}`, { method: 'DELETE' }); await loadAll(); } catch (err) { alert(err.message); }
             });
           }
-          ledgerEl.appendChild(div);
+          ledgerEl.appendChild(entry);
         });
       }
 
@@ -411,8 +1120,14 @@
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(loginForm);
+        const stayLoggedIn = Boolean(fd.get('stayLoggedIn'));
+        localStorage.setItem('stayLoggedIn', stayLoggedIn ? 'true' : 'false');
         try {
-          await api('/auth/login', { method: 'POST', body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }) });
+          await api('/auth/login', { method: 'POST', body: JSON.stringify({
+            username: fd.get('username'),
+            password: fd.get('password'),
+            stayLoggedIn
+          }) });
           await loadAll();
         } catch (err) { alert(err.message); }
       });
@@ -494,7 +1209,7 @@
           if (currentRole === 'unknown') {
             loginBox.style.display = '';
             statusEl.textContent = 'Bitte anmelden';
-            statusEl.className = 'muted';
+            statusEl.className = 'status-pill muted';
           } else {
             await loadAll();
           }

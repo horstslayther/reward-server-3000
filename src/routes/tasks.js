@@ -10,13 +10,17 @@ router.get('/', (req, res) => {
   // Generate due recurring tasks before listing
   try { runRecurringTick(); } catch (_) {}
   const { status } = req.query;
+  const includeDeleted = req.session?.user?.role === 'admin';
   let rows;
   if (status) {
+    if (status === 'deleted' && !includeDeleted) return res.status(403).json({ error: 'forbidden' });
+    const filter = includeDeleted ? '' : " AND status <> 'deleted'";
     rows = db
-      .prepare('SELECT * FROM tasks WHERE status = ? ORDER BY created_at DESC, id DESC')
+      .prepare(`SELECT * FROM tasks WHERE status = ?${filter} ORDER BY created_at DESC, id DESC`)
       .all(status);
   } else {
-    rows = db.prepare('SELECT * FROM tasks ORDER BY created_at DESC, id DESC').all();
+    const filter = includeDeleted ? '' : "WHERE status <> 'deleted'";
+    rows = db.prepare(`SELECT * FROM tasks ${filter} ORDER BY created_at DESC, id DESC`).all();
   }
   res.json(rows);
 });
@@ -69,7 +73,32 @@ router.patch('/:id/reject', requireRole('admin'), (req, res) => {
 
 router.delete('/:id', requireRole('admin'), (req, res) => {
   const id = Number(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  if (!task) return res.status(404).json({ error: 'not found' });
+  if (task.status === 'deleted') return res.status(200).json(task);
+  db.prepare("UPDATE tasks SET status='deleted', deleted_at = datetime('now') WHERE id = ?").run(id);
+  const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  notify(`Archiv: ${task.title} wurde gelöscht`);
+  res.json(updated);
+});
+
+router.patch('/:id/restore', requireRole('admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  if (!task) return res.status(404).json({ error: 'not found' });
+  if (task.status !== 'deleted') return res.status(400).json({ error: 'task is not deleted' });
+  db.prepare("UPDATE tasks SET status='open', deleted_at = NULL WHERE id = ?").run(id);
+  const restored = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  notify(`Task wiederhergestellt: ${restored.title}`);
+  res.json(restored);
+});
+
+router.delete('/:id/purge', requireRole('admin'), (req, res) => {
+  const id = Number(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  if (!task) return res.status(404).json({ error: 'not found' });
   db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+  notify(`Task endgültig entfernt: ${task.title}`);
   res.status(204).end();
 });
 
